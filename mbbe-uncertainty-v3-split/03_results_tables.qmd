@@ -1,0 +1,234 @@
+---
+title: "MBBE Uncertainty: Results Tables (v3)"
+subtitle: "Absolute & Relative-to-Fixed Operating Characteristics — Parallel Design"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+    code-overflow: wrap
+    fig-align: center
+    self-contained: true
+    smooth-scroll: true
+    fontsize: "1rem"
+    mainfont: "system-ui, -apple-system, sans-serif"
+execute:
+  echo: true
+  warning: false
+  message: false
+engine: julia
+---
+
+# Overview
+
+This document loads pre-computed batch simulation results (from `02_run_fixed.jl`,
+`02_run_vcov.jl`, `02_run_bootstrap.jl`, `02_run_sir.jl`) and presents all
+operating characteristic tables — both absolute and relative to the Fixed
+(plug-in) method.
+
+::: {.callout-note}
+## No Heavy Computation
+All simulation results are loaded from saved `.jls` files. This document renders
+quickly — no simulations are re-run.
+:::
+
+# Load Results
+
+```{julia}
+#| output: false
+include(joinpath(@__DIR__, "common.jl"))
+
+const RESULTS_DIR = "/home/jrun/data/code/teva-olanzapine/mbbe-uncertainty-v3-split"
+println("Loading per-method batch results from $RESULTS_DIR ...")
+results = load_all_method_results(dir = RESULTS_DIR)
+all_batches  = results.all_batches
+all_summary  = results.all_summary
+relative_df  = results.relative_df
+nothing
+```
+
+```{julia}
+#| echo: false
+println("all_batches: $(nrow(all_batches)) rows")
+println("all_summary: $(nrow(all_summary)) rows")
+println("relative_df: $(nrow(relative_df)) rows")
+```
+
+# Absolute Results
+
+## Power Estimates — T/R = 1.0
+
+Point estimate (%) and 95% CI across batches:
+
+```{julia}
+#| echo: false
+power_at_1 = filter(r -> r.tr_ratio == 1.0, all_summary)
+power_at_1.display = fmt_ci.(power_at_1.mean_rate, power_at_1.ci_lo, power_at_1.ci_hi)
+display(unstack(select(power_at_1, :n_per_arm, :method, :display), :n_per_arm, :method, :display))
+```
+
+## Power Estimates — T/R = 0.9
+
+```{julia}
+#| echo: false
+pow09 = filter(r -> r.tr_ratio == 0.9, all_summary)
+pow09.display = fmt_ci.(pow09.mean_rate, pow09.ci_lo, pow09.ci_hi)
+display(unstack(select(pow09, :n_per_arm, :method, :display), :n_per_arm, :method, :display))
+```
+
+## Power Estimates — T/R = 1.1
+
+```{julia}
+#| echo: false
+pow11 = filter(r -> r.tr_ratio == 1.1, all_summary)
+pow11.display = fmt_ci.(pow11.mean_rate, pow11.ci_lo, pow11.ci_hi)
+display(unstack(select(pow11, :n_per_arm, :method, :display), :n_per_arm, :method, :display))
+```
+
+## Type I Error — T/R = 0.7
+
+```{julia}
+#| echo: false
+t1e_07 = filter(r -> r.tr_ratio == 0.7, all_summary)
+t1e_07.display = fmt_ci.(t1e_07.mean_rate, t1e_07.ci_lo, t1e_07.ci_hi)
+display(unstack(select(t1e_07, :n_per_arm, :method, :display), :n_per_arm, :method, :display))
+```
+
+## Type I Error — T/R = 1.3
+
+```{julia}
+#| echo: false
+t1e_13 = filter(r -> r.tr_ratio == 1.3, all_summary)
+t1e_13.display = fmt_ci.(t1e_13.mean_rate, t1e_13.ci_lo, t1e_13.ci_hi)
+display(unstack(select(t1e_13, :n_per_arm, :method, :display), :n_per_arm, :method, :display))
+```
+
+## Full Results Table (Long Format)
+
+```{julia}
+#| echo: false
+display(select(all_summary,
+    :method, :tr_ratio, :n_per_arm,
+    :mean_rate => ByRow(x -> round(x, digits=2)) => :mean_pct,
+    :ci_lo     => ByRow(x -> round(x, digits=2)) => :ci_lo,
+    :ci_hi     => ByRow(x -> round(x, digits=2)) => :ci_hi,
+    :std_rate  => ByRow(x -> round(x, digits=2)) => :batch_sd,
+    :pctl_025  => ByRow(x -> round(x, digits=2)) => :p2_5,
+    :pctl_975  => ByRow(x -> round(x, digits=2)) => :p97_5
+))
+```
+
+# Results — Relative to Fixed
+
+All tables below show VCOV, Bootstrap, and SIR benchmarked against the Fixed (plug-in)
+method. The Fixed column shows the absolute reference value for context.
+
+```{julia}
+#| output: false
+#| code-summary: "Helper functions for relative tables"
+
+function display_diff_table(tr_val)
+    sub = filter(r -> r.tr_ratio == tr_val, relative_df)
+    sub_disp = copy(sub)
+    sub_disp.display = fmt_diff.(sub_disp.abs_diff, sub_disp.abs_diff_ci_lo, sub_disp.abs_diff_ci_hi)
+    diff_wide = unstack(select(sub_disp, :n_per_arm, :method, :display), :n_per_arm, :method, :display)
+
+    fixed_abs = filter(r -> r.method == "Fixed" && r.tr_ratio == tr_val, all_summary)
+    fixed_abs_disp = DataFrame(n_per_arm = fixed_abs.n_per_arm,
+        Fixed_ref = fmt_ci.(fixed_abs.mean_rate, fixed_abs.ci_lo, fixed_abs.ci_hi))
+    display(innerjoin(fixed_abs_disp, diff_wide, on = :n_per_arm))
+end
+
+function display_ratio_table(tr_val)
+    sub = filter(r -> r.tr_ratio == tr_val, relative_df)
+    sub_disp = copy(sub)
+    sub_disp.display = fmt_ratio.(sub_disp.ratio, sub_disp.ratio_ci_lo, sub_disp.ratio_ci_hi)
+    ratio_wide = unstack(select(sub_disp, :n_per_arm, :method, :display), :n_per_arm, :method, :display)
+
+    fixed_abs = filter(r -> r.method == "Fixed" && r.tr_ratio == tr_val, all_summary)
+    fixed_disp = DataFrame(n_per_arm = fixed_abs.n_per_arm,
+        Fixed_ref = fmt_ci.(fixed_abs.mean_rate, fixed_abs.ci_lo, fixed_abs.ci_hi))
+    display(innerjoin(fixed_disp, ratio_wide, on = :n_per_arm))
+end
+nothing
+```
+
+## Difference from Fixed (pp) — Power at T/R = 1.0
+
+```{julia}
+#| echo: false
+display_diff_table(1.0)
+```
+
+## Difference from Fixed (pp) — Power at T/R = 0.9
+
+```{julia}
+#| echo: false
+display_diff_table(0.9)
+```
+
+## Difference from Fixed (pp) — Power at T/R = 1.1
+
+```{julia}
+#| echo: false
+display_diff_table(1.1)
+```
+
+## Difference from Fixed (pp) — Type I Error at T/R = 0.7
+
+```{julia}
+#| echo: false
+display_diff_table(0.7)
+```
+
+## Difference from Fixed (pp) — Type I Error at T/R = 1.3
+
+```{julia}
+#| echo: false
+display_diff_table(1.3)
+```
+
+## Ratio to Fixed — Power at T/R = 1.0
+
+Values > 1 indicate the method yields higher power than Fixed; < 1 indicates lower.
+
+```{julia}
+#| echo: false
+display_ratio_table(1.0)
+```
+
+## Ratio to Fixed — Type I Error at T/R = 0.7
+
+```{julia}
+#| echo: false
+display_ratio_table(0.7)
+```
+
+## Ratio to Fixed — Type I Error at T/R = 1.3
+
+```{julia}
+#| echo: false
+display_ratio_table(1.3)
+```
+
+## Full Relative Results Table (Long Format)
+
+```{julia}
+#| echo: false
+display(select(relative_df,
+    :method, :tr_ratio, :n_per_arm,
+    :fixed_mean  => ByRow(x -> round(x, digits=2)) => :fixed_pct,
+    :mean_rate   => ByRow(x -> round(x, digits=2)) => :method_pct,
+    :abs_diff    => ByRow(x -> round(x, digits=2)) => :diff_pp,
+    :abs_diff_ci_lo => ByRow(x -> round(x, digits=2)) => :diff_ci_lo,
+    :abs_diff_ci_hi => ByRow(x -> round(x, digits=2)) => :diff_ci_hi,
+    :ratio       => ByRow(x -> isnan(x) ? missing : round(x, digits=3)) => :ratio,
+    :ratio_ci_lo => ByRow(x -> isnan(x) ? missing : round(x, digits=3)) => :ratio_ci_lo,
+    :ratio_ci_hi => ByRow(x -> isnan(x) ? missing : round(x, digits=3)) => :ratio_ci_hi
+))
+```

@@ -1,0 +1,7 @@
+job_id     : 18
+method     : SIR
+tr_ratio   : 1.0
+n_rows     : 1000
+elapsed_s  : 45522.0
+elapsed_min: 758.7
+completed  : 2026-03-19T03:59:39.909

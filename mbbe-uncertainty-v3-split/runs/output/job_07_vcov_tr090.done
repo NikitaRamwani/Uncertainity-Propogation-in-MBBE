@@ -1,0 +1,7 @@
+job_id     : 7
+method     : VCOV
+tr_ratio   : 0.9
+n_rows     : 1000
+elapsed_s  : 45770.6
+elapsed_min: 762.8
+completed  : 2026-03-19T03:53:45.112

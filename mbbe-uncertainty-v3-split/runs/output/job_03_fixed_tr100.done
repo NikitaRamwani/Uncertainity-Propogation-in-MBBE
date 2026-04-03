@@ -1,0 +1,7 @@
+job_id     : 3
+method     : Fixed
+tr_ratio   : 1.0
+n_rows     : 1000
+elapsed_s  : 54560.7
+elapsed_min: 909.3
+completed  : 2026-03-19T06:15:28.587

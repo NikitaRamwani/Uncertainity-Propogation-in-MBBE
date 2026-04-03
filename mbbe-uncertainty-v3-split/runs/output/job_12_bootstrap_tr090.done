@@ -1,0 +1,7 @@
+job_id     : 12
+method     : Bootstrap
+tr_ratio   : 0.9
+n_rows     : 1000
+elapsed_s  : 47260.6
+elapsed_min: 787.7
+completed  : 2026-03-19T04:25:28.047
